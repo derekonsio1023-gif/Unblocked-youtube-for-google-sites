@@ -1,0 +1,146 @@
+<script>
+"use strict";
+
+(async () => {
+
+// default error handler
+window.onerror = (message, src, lineno, colno, error) => {
+	alert(`Error at "${src}", line ${lineno}:${colno}: \n${error}`, "Error");
+};
+
+// html elements
+const searchBar = document.getElementById("search");
+const searchButton = document.getElementById("search-button");
+const maxResults = document.getElementById("max-results");
+const order = document.getElementById("order");
+const message = document.getElementById("message");
+const resultContainer = document.getElementById("results");
+const loadmore = document.getElementById("loadmore");
+
+// load youtube gapi
+await new Promise(r => gapi.load("client", r));
+await new Promise(r => gapi.client.load("youtube", "v3", r));
+await gapi.client.init({
+	apiKey: "TU_API_KEY_AQUI",
+	discoveryDocs: [
+		"https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"
+	]
+});
+
+const youtube = gapi.client.youtube;
+if (youtube == null) {
+	message.textContent = "Failed to load YouTube GAPI.";
+	return;
+}
+
+let pageToken = null;
+
+searchButton.onclick = () => {
+	resultContainer.innerHTML = "";
+	pageToken = null;
+	run();
+};
+
+searchBar.onkeydown = (e) => {
+	if (e.key == "Enter") {
+		e.preventDefault();
+		searchButton.click();
+	}
+};
+
+function correctNumberRange(element, def, min, max) {
+	const val = element.value;
+	if (!val) return element.value = def.toString();
+
+	const nVal = parseInt(val);
+	if (nVal < min) return element.value = min.toString();
+	else if (nVal > max) return element.value = max.toString();
+	else return element.value;
+}
+
+function run() {
+	loadmore.style.display = "none"
+	message.innerHTML = "";
+	search(searchBar.value, correctNumberRange(maxResults, 10, 1, 50), order.value);
+}
+
+function createVideoFrame(container, videoId) {
+
+	const frame = document.createElement("iframe");
+
+	const url = new URL("https://www.youtube-nocookie.com/embed/" + videoId);
+	url.searchParams.set("autoplay", "1");
+	url.searchParams.set("controls", "1");
+
+	frame.src = url.href;
+	frame.allowFullscreen = true;
+
+	container.appendChild(frame);
+}
+
+async function search(q, maxResults, order) {
+
+	const params = {
+		part: "snippet",
+		type: "video",
+		order,
+		maxResults,
+		pageToken,
+		q
+	};
+
+	const response = await youtube.search.list(params);
+
+	const items = response.result.items;
+
+	for (const item of items) {
+
+		const id = item.id.videoId;
+		const title = item.snippet.title;
+		const description = item.snippet.description;
+		const publishTime = item.snippet.publishTime;
+		const thumbnail = item.snippet.thumbnails.medium;
+
+		const container = document.createElement("div");
+		container.className = "result";
+
+		container.innerHTML =
+		'<div class="result-item">'+
+		'<img class="result-preview" width="160" height="90">'+
+		'<div class="result-details">'+
+		'<div class="result-title"></div>'+
+		'<div class="result-description"></div>'+
+		'<div class="result-publish-time"></div>'+
+		'</div></div><div class="video-container"></div>';
+
+		container.querySelector(".result-preview").src = thumbnail.url;
+		container.querySelector(".result-title").textContent = title;
+		container.querySelector(".result-description").textContent = description;
+		container.querySelector(".result-publish-time").textContent = publishTime;
+
+		const videoContainer = container.querySelector(".video-container");
+
+		container.querySelector(".result-item").onclick = () => {
+
+			if (videoContainer.style.display === "block") {
+
+				videoContainer.innerHTML = "";
+				videoContainer.style.display = "none";
+
+			} else {
+
+				videoContainer.style.display = "block";
+				createVideoFrame(videoContainer, id);
+
+			}
+
+		};
+
+		resultContainer.appendChild(container);
+
+	}
+
+}
+
+})();
+</script>
