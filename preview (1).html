@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>YouTube Unblocked</title>
+
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="stylesheet" href="standard.css">
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="https://apis.google.com/js/api.js"></script>
+
+<style>
+
+body {
+	background:#ffffff;
+	overflow-x:hidden;
+}
+
+#top {
+	width:500px;
+	margin:20px auto;
+}
+
+#search-bar{
+	display:flex;
+	column-gap:10px;
+}
+
+#search{
+	width:80%;
+	padding:8px;
+	border-radius:25px;
+	border:1px solid #808080;
+}
+
+#search-button{
+	width:20%;
+	cursor:pointer;
+	border-radius:25px;
+	background:#800000 url("search.svg") center no-repeat;
+}
+
+#results{
+	width:780px;
+	margin:auto;
+}
+
+.video-container{
+	display:none;
+	width:400px;
+	height:300px;
+	margin:15px auto;
+}
+
+iframe{
+	width:100%;
+	height:100%;
+	border:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="top">
+
+<div id="search-bar">
+<input id="search" type="text" placeholder="Search">
+<div id="search-button"></div>
+</div>
+
+</div>
+
+<div id="message"></div>
+<div id="results"></div>
+<div id="loadmore">Load More</div>
+
+<script>
+
+"use strict";
+
+(async ()=>{
+
+window.onerror=(message,src,lineno,colno,error)=>{
+console.error(error);
+};
+
+const searchBar=document.getElementById("search");
+const searchButton=document.getElementById("search-button");
+const message=document.getElementById("message");
+const resultContainer=document.getElementById("results");
+const loadmore=document.getElementById("loadmore");
+
+await new Promise(r=>gapi.load("client",r));
+await new Promise(r=>gapi.client.load("youtube","v3",r));
+
+await gapi.client.init({
+apiKey:"TU_API_KEY",
+discoveryDocs:[
+"https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"
+]
+});
+
+const youtube=gapi.client.youtube;
+
+if(!youtube){
+message.textContent="Failed to load YouTube API";
+return;
+}
+
+let pageToken=null;
+
+searchButton.onclick=()=>{
+resultContainer.innerHTML="";
+pageToken=null;
+run();
+};
+
+searchBar.onkeydown=(e)=>{
+if(e.key==="Enter"){
+e.preventDefault();
+searchButton.click();
+}
+};
+
+function run(){
+message.innerHTML="";
+search(searchBar.value,10,"relevance");
+}
+
+function createVideoFrame(container,videoId){
+
+const frame=document.createElement("iframe");
+
+const url=new URL("https://www.youtube-nocookie.com/embed/"+videoId);
+
+url.searchParams.set("autoplay","1");
+url.searchParams.set("controls","1");
+url.searchParams.set("rel","0");
+
+frame.src=url.href;
+frame.allowFullscreen=true;
+
+container.appendChild(frame);
+}
+
+async function search(q,maxResults,order){
+
+const params={
+part:"snippet",
+type:"video",
+order,
+maxResults,
+pageToken,
+q
+};
+
+const response=await youtube.search.list(params);
+
+if(!response){
+message.innerHTML="Internal error";
+return;
+}
+
+const items=response.result.items;
+
+if(!items || items.length===0){
+message.innerHTML="No results";
+return;
+}
+
+for(const item of items){
+
+const id=item.id.videoId;
+
+const title=item.snippet.title;
+const description=item.snippet.description;
+const publishTime=item.snippet.publishTime;
+const thumbnail=item.snippet.thumbnails.medium;
+
+const container=document.createElement("div");
+
+container.className="result";
+
+container.innerHTML=
+
+'<div class="result-item">'+
+'<img class="result-preview" width="160" height="90">'+
+'<div class="result-details">'+
+'<div class="result-title"></div>'+
+'<div class="result-description"></div>'+
+'<div class="result-publish-time"></div>'+
+'</div></div>'+
+'<div class="video-container"></div>';
+
+container.querySelector(".result-preview").src=thumbnail.url;
+
+container.querySelector(".result-title").textContent=title;
+
+container.querySelector(".result-description").textContent=description;
+
+container.querySelector(".result-publish-time").textContent=publishTime;
+
+const videoContainer=container.querySelector(".video-container");
+
+container.querySelector(".result-item").onclick=()=>{
+
+if(videoContainer.style.display==="none"){
+
+videoContainer.style.display="block";
+
+createVideoFrame(videoContainer,id);
+
+}else{
+
+videoContainer.innerHTML="";
+videoContainer.style.display="none";
+
+}
+
+};
+
+resultContainer.appendChild(container);
+
+}
+
+}
+
+})();
+
+</script>
+
+</body>
+</html>
