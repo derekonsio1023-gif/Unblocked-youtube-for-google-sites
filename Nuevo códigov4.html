@@ -1145,7 +1145,7 @@ function filterZones2() {
 }
 
 function filterZones() {
-    const query = (searchBar.value || "").trim().toLowerCase();
+    const query = (searchBar.value || "").trim().toLowerCase() : "";
     if (query.length === 0) {
         displayZones(zones);
         return;
